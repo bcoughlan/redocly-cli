@@ -29,7 +29,7 @@ import {
   sortTopLevelKeysForOas,
 } from '../utils';
 import { isObject, isString, keysOf } from '../js-utils';
-import { Oas3Parameter, Oas3PathItem, Oas3Server } from '@redocly/openapi-core/lib/typings/openapi';
+import { Oas3Parameter, Oas3PathItem, Oas3Server, Oas3_1Definition } from '@redocly/openapi-core/lib/typings/openapi';
 import { OPENAPI3_METHOD } from './split/types';
 import { BundleResult } from '@redocly/openapi-core/lib/bundle';
 
@@ -141,7 +141,7 @@ export async function handleJoin(argv: JoinOptions, config: Config, packageVersi
     }
   }
 
-  const seenVersions = new Set();
+  const seenVersions : Set<OasVersion> = new Set();
   for (const document of documents) {
     try {
       const version = detectOpenAPI(document.parsed);
@@ -164,6 +164,8 @@ export async function handleJoin(argv: JoinOptions, config: Config, packageVersi
       return exitWithError(`${e.message}: ${blue(document.source.absoluteRef)}`);
     }
   }
+
+  const outputVersion = Array.from(seenVersions)[0];
 
   if (argv.lint) {
     for (const document of documents) {
@@ -211,7 +213,7 @@ export async function handleJoin(argv: JoinOptions, config: Config, packageVersi
     collectExternalDocs(openapi, context);
     collectPaths(openapi, context);
     collectComponents(openapi, context);
-    collectXWebhooks(openapi, context);
+    collectXWebhooks(outputVersion, openapi, context);
     if (componentsPrefix) {
       replace$Refs(openapi, componentsPrefix);
     }
@@ -585,10 +587,11 @@ export async function handleJoin(argv: JoinOptions, config: Config, packageVersi
   }
 
   function collectXWebhooks(
-    openapi: Oas3Definition,
+    outputVersion: OasVersion,
+    openapi: Oas3_1Definition,
     { apiFilename, api, potentialConflicts, tagsPrefix, componentsPrefix }: JoinDocumentContext
   ) {
-    const xWebhooks = 'x-webhooks';
+    const xWebhooks = outputVersion == OasVersion.Version3_1 ? 'webhooks' : 'x-webhooks';
     const openapiXWebhooks = openapi[xWebhooks];
     if (openapiXWebhooks) {
       if (!joinedDef.hasOwnProperty(xWebhooks)) {
